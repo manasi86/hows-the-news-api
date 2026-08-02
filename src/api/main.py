@@ -1,0 +1,29 @@
+"""FastAPI application entry point."""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.routes.analyse import router as analyse_router
+from api.routes.summarize import router as summarize_router
+
+app = FastAPI(title="hows-the-news", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(summarize_router)
+app.include_router(analyse_router)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Simple liveness check for the API.
+
+    Returns:
+        A JSON payload indicating the API is healthy.
+    """
+    return {"status": "ok"}
