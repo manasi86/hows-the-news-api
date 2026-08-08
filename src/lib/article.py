@@ -1,11 +1,12 @@
 """Fetch and extract article text from a news article URL."""
 
-import ipaddress
 from html.parser import HTMLParser
+import ipaddress
 from typing import TypeAlias
 from urllib.parse import urlparse
 
-import httpx
+import httpx as httpx
+from typing_extensions import override
 
 from lib.config import get_settings
 
@@ -59,16 +60,19 @@ class _TextExtractor(HTMLParser):
         self._chunks: list[str] = []
         self._skip_depth = 0
 
+    @override
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _SKIP_TAGS:
             self._skip_depth += 1
         elif tag in _BLOCK_TAGS:
             self._chunks.append("\n")
 
+    @override
     def handle_endtag(self, tag: str) -> None:
         if tag in _SKIP_TAGS:
             self._skip_depth = max(0, self._skip_depth - 1)
 
+    @override
     def handle_data(self, data: str) -> None:
         if self._skip_depth == 0:
             self._chunks.append(data)
@@ -80,7 +84,7 @@ class _TextExtractor(HTMLParser):
 
 def _normalise(text: str) -> str:
     """Collapse whitespace and drop empty lines from ``text``."""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lines = [" ".join(line.split()) for line in text.splitlines() if line.strip()]
     return "\n".join(lines)
 
 

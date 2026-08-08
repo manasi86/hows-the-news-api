@@ -14,6 +14,12 @@ class SentimentResult(TypedDict):
     sentiment: Sentiment
     confidence: float
     reason: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    prompt_tokens_cost: float
+    completion_tokens_cost: float
+    cost: float
 
 
 def analyze_sentiment(text: str) -> SentimentResult:
@@ -23,11 +29,18 @@ def analyze_sentiment(text: str) -> SentimentResult:
         text: The input text (typically a news summary) to analyze.
 
     Returns:
-        A :class:`SentimentResult` containing the label, confidence, and reason.
+        A :class:`SentimentResult` containing the label, confidence, reason, and
+        the LLM token usage and cost.
     """
-    data = chat(SENTIMENT_SYSTEM_PROMPT, text)
+    result = chat(SENTIMENT_SYSTEM_PROMPT, text)
     return SentimentResult(
-        sentiment=cast(Sentiment, data.get("sentiment", "neutral")),
-        confidence=float(data.get("confidence", 0.0)),
-        reason=str(data.get("reason", "")),
+        sentiment=cast(Sentiment, result.data.get("sentiment", "neutral")),
+        confidence=float(result.data.get("confidence", 0.0)),
+        reason=str(result.data.get("reason", "")),
+        prompt_tokens=result.usage.prompt_tokens,
+        completion_tokens=result.usage.completion_tokens,
+        total_tokens=result.usage.total_tokens,
+        prompt_tokens_cost=result.usage.prompt_tokens_cost(),
+        completion_tokens_cost=result.usage.completion_tokens_cost(),
+        cost=result.usage.cost(),
     )

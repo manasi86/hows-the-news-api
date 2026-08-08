@@ -30,7 +30,9 @@ def _patch_get(
                 raise httpx.HTTPStatusError(
                     f"error {status_code}",
                     request=httpx.Request("GET", "https://example.com"),
-                    response=httpx.Response(status_code, request=httpx.Request("GET", "https://example.com")),
+                    response=httpx.Response(
+                        status_code, request=httpx.Request("GET", "https://example.com")
+                    ),
                 )
 
     monkeypatch.setattr(article.httpx, "get", lambda *args, **kwargs: _FakeResponse())

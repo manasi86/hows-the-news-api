@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from lib.config import MissingApiKeyError, get_settings
-from lib.llm import LLMError, _extract_json, _parse_json, chat
+from lib.llm import LLMError, TokenUsage, _extract_json, _parse_json, chat
 
 
 class FakeResponse:
@@ -58,8 +58,16 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_TIMEOUT", "30")
 
 
-def _ok_response(content: str) -> object:
-    return {"choices": [{"message": {"content": content}}]}
+def _ok_response(
+    content: str,
+    *,
+    prompt_tokens: int = 100,
+    completion_tokens: int = 50,
+) -> object:
+    return {
+        "choices": [{"message": {"content": content}}],
+        "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
+    }
 
 
 def test_get_settings_with_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -138,7 +146,36 @@ def test_chat_success(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *args, **kwargs: _fake_post(json_data=_ok_response(content)),
     )
     result = chat("system", "user text")
-    assert result == {"is_news": True, "summary": "s", "reason": "r"}
+    assert result.data == {"is_news": True, "summary": "s", "reason": "r"}
+    assert result.usage == TokenUsage(prompt_tokens=100, completion_tokens=50)
+    assert result.usage.total_tokens == 150
+
+
+def test_chat_missing_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_env(monkeypatch)
+    content = '{"is_news": true}'
+    monkeypatch.setattr(
+        "lib.llm.httpx.post",
+        lambda *args, **kwargs: _fake_post(
+            json_data={"choices": [{"message": {"content": content}}]}
+        ),
+    )
+    result = chat("system", "user text")
+    assert result.data == {"is_news": True}
+    assert result.usage == TokenUsage(prompt_tokens=0, completion_tokens=0)
+
+
+def test_token_usage_cost() -> None:
+    usage = TokenUsage(prompt_tokens=1_000_000, completion_tokens=1_000_000)
+    assert usage.total_tokens == 2_000_000
+    assert usage.prompt_tokens_cost() == 0.039
+    assert usage.completion_tokens_cost() == 0.100
+    assert usage.cost() == 0.139
+
+
+def test_token_usage_cost_split_consistency() -> None:
+    usage = TokenUsage(prompt_tokens=368, completion_tokens=84)
+    assert usage.cost() == usage.prompt_tokens_cost() + usage.completion_tokens_cost()
 
 
 def test_chat_http_status_error(monkeypatch: pytest.MonkeyPatch) -> None:

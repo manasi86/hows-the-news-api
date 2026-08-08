@@ -14,6 +14,12 @@ class SummaryResult(TypedDict):
     is_news: bool
     summary: str | None
     reason: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    prompt_tokens_cost: float
+    completion_tokens_cost: float
+    cost: float
 
 
 def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
@@ -28,7 +34,8 @@ def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
         url: A URL to a news article to fetch and analyze instead of ``text``.
 
     Returns:
-        A :class:`SummaryResult` containing the news flag, summary, and reason.
+        A :class:`SummaryResult` containing the news flag, summary, reason, and
+        the LLM token usage and cost.
 
     Raises:
         ValueError: If neither ``text`` nor ``url`` is provided.
@@ -40,19 +47,37 @@ def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
                 is_news=False,
                 summary=None,
                 reason=f"Could not extract the news article from the URL: {error}",
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                prompt_tokens_cost=0.0,
+                completion_tokens_cost=0.0,
+                cost=0.0,
             )
         if content is None:
             return SummaryResult(
                 is_news=False,
                 summary=None,
                 reason="Could not extract the news article from the URL",
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                prompt_tokens_cost=0.0,
+                completion_tokens_cost=0.0,
+                cost=0.0,
             )
         text = content[:MAX_TEXT_LENGTH]
     if text is None:
         raise ValueError("Provide exactly one of 'text' or 'url'")
-    data = chat(SUMMARIZE_SYSTEM_PROMPT, text)
+    result = chat(SUMMARIZE_SYSTEM_PROMPT, text)
     return SummaryResult(
-        is_news=bool(data.get("is_news")),
-        summary=data.get("summary"),
-        reason=str(data.get("reason", "")),
+        is_news=bool(result.data.get("is_news")),
+        summary=result.data.get("summary"),
+        reason=str(result.data.get("reason", "")),
+        prompt_tokens=result.usage.prompt_tokens,
+        completion_tokens=result.usage.completion_tokens,
+        total_tokens=result.usage.total_tokens,
+        prompt_tokens_cost=result.usage.prompt_tokens_cost(),
+        completion_tokens_cost=result.usage.completion_tokens_cost(),
+        cost=result.usage.cost(),
     )

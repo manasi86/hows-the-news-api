@@ -27,6 +27,7 @@ dependencies = [
     "fastapi",
     "httpx",
     "python-dotenv",
+    "typing-extensions",
     "uvicorn",
 ]
 

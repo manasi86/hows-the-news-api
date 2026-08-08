@@ -17,34 +17,72 @@ def test_health() -> None:
 def test_summarize_news(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "lib.news.summarize",
-        lambda text: {"is_news": True, "summary": "A summary.", "reason": "News."},
+        lambda text, url: {
+            "is_news": True,
+            "summary": "A summary.",
+            "reason": "News.",
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+            "prompt_tokens_cost": 0.000004,
+            "completion_tokens_cost": 0.000005,
+            "cost": 0.000009,
+        },
     )
     response = client.post("/summarize", json={"text": "Some news text"})
     assert response.status_code == 200
     assert response.json()["is_news"] is True
     assert response.json()["summary"] == "A summary."
+    assert response.json()["prompt_tokens"] == 100
+    assert response.json()["completion_tokens"] == 50
+    assert response.json()["total_tokens"] == 150
+    assert response.json()["prompt_tokens_cost"] == 0.000004
+    assert response.json()["completion_tokens_cost"] == 0.000005
+    assert response.json()["cost"] == 0.000009
 
 
 def test_summarize_non_news(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "lib.news.summarize",
-        lambda text: {"is_news": False, "summary": None, "reason": "Not news."},
+        lambda text, url: {"is_news": False, "summary": None, "reason": "Not news."},
     )
     response = client.post("/summarize", json={"text": "A recipe"})
     assert response.status_code == 200
     assert response.json()["is_news"] is False
     assert response.json()["summary"] is None
+    assert response.json()["prompt_tokens"] == 0
+    assert response.json()["completion_tokens"] == 0
+    assert response.json()["total_tokens"] == 0
+    assert response.json()["prompt_tokens_cost"] == 0.0
+    assert response.json()["completion_tokens_cost"] == 0.0
+    assert response.json()["cost"] == 0.0
 
 
 def test_analyse(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "lib.sentiment.analyze_sentiment",
-        lambda text: {"sentiment": "positive", "confidence": 0.9, "reason": "Good."},
+        lambda text: {
+            "sentiment": "positive",
+            "confidence": 0.9,
+            "reason": "Good.",
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+            "prompt_tokens_cost": 0.000004,
+            "completion_tokens_cost": 0.000005,
+            "cost": 0.000009,
+        },
     )
     response = client.post("/analyse", json={"text": "A positive summary"})
     assert response.status_code == 200
     assert response.json()["sentiment"] == "positive"
     assert response.json()["confidence"] == 0.9
+    assert response.json()["prompt_tokens"] == 100
+    assert response.json()["completion_tokens"] == 50
+    assert response.json()["total_tokens"] == 150
+    assert response.json()["prompt_tokens_cost"] == 0.000004
+    assert response.json()["completion_tokens_cost"] == 0.000005
+    assert response.json()["cost"] == 0.000009
 
 
 def test_summarize_empty_text() -> None:
@@ -63,7 +101,7 @@ def test_summarize_missing_text() -> None:
 
 
 def test_summarize_llm_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail(text: str) -> dict[str, object]:
+    def fail(text: str, url: str | None) -> dict[str, object]:
         raise LLMError("LLM request failed")
 
     monkeypatch.setattr("lib.news.summarize", fail)
@@ -81,7 +119,7 @@ def test_analyse_llm_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_summarize_missing_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail(text: str) -> dict[str, object]:
+    def fail(text: str, url: str | None) -> dict[str, object]:
         raise MissingApiKeyError("LLM_API_KEY is not set")
 
     monkeypatch.setattr("lib.news.summarize", fail)

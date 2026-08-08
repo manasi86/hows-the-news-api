@@ -479,6 +479,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "python-dotenv" },
+    { name = "typing-extensions" },
     { name = "uvicorn" },
 ]
 
@@ -512,6 +513,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "python-dotenv" },
+    { name = "typing-extensions" },
     { name = "uvicorn" },
 ]
 

@@ -32,6 +32,12 @@ class SummarizeResponse(BaseModel):
     is_news: bool
     summary: str | None = None
     reason: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    prompt_tokens_cost: float = 0.0
+    completion_tokens_cost: float = 0.0
+    cost: float = 0.0
 
 
 class AnalyseResponse(BaseModel):
@@ -40,3 +46,9 @@ class AnalyseResponse(BaseModel):
     sentiment: Sentiment
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    prompt_tokens_cost: float = 0.0
+    completion_tokens_cost: float = 0.0
+    cost: float = 0.0
