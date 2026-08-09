@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+import logging
 from typing import Any, TypedDict, cast
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
@@ -40,7 +44,9 @@ def _to_float(value: object) -> float | None:
         return None
 
 
+@lru_cache(maxsize=128)
 def find_model_pricing(model_name: str, provider_name: str | None = None) -> list[PricingResult]:
+    logger.info("data from internet")
     data = load_pricing_data()
 
     requested_model = normalise(model_name)

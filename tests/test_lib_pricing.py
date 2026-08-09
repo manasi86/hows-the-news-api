@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+import logging
+
 from fastapi.testclient import TestClient
 import httpx
 import pytest
@@ -51,6 +54,13 @@ MOCK_DATA: dict[str, list[dict[str, object]]] = {
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr("lib.pricing.load_pricing_data", lambda: MOCK_DATA)
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def clear_pricing_cache() -> Iterator[None]:
+    find_model_pricing.cache_clear()
+    yield
+    find_model_pricing.cache_clear()
 
 
 @pytest.fixture
@@ -289,3 +299,37 @@ def test_find_model_pricing_missing_data_key(monkeypatch: pytest.MonkeyPatch) ->
 def test_find_model_pricing_no_match_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("lib.pricing.load_pricing_data", lambda: MOCK_DATA)
     assert find_model_pricing("unknown-model") == []
+
+
+def test_find_model_pricing_served_from_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+
+    def counting_load_pricing_data() -> dict[str, list[dict[str, object]]]:
+        nonlocal calls
+        calls += 1
+        return MOCK_DATA
+
+    monkeypatch.setattr("lib.pricing.load_pricing_data", counting_load_pricing_data)
+    first = find_model_pricing("gpt-4o")
+    second = find_model_pricing("gpt-4o")
+    assert first == second
+    assert calls == 1
+
+
+def test_find_model_pricing_logs_on_cache_miss(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr("lib.pricing.load_pricing_data", lambda: MOCK_DATA)
+    with caplog.at_level(logging.INFO, logger="lib.pricing"):
+        find_model_pricing("gpt-4o")
+    assert any("data from internet" in record.message for record in caplog.records)
+
+
+def test_find_model_pricing_does_not_log_on_cache_hit(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr("lib.pricing.load_pricing_data", lambda: MOCK_DATA)
+    find_model_pricing("gpt-4o")
+    with caplog.at_level(logging.INFO, logger="lib.pricing"):
+        find_model_pricing("gpt-4o")
+    assert not any("data from internet" in record.message for record in caplog.records)

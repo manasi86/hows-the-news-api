@@ -1,5 +1,8 @@
 """FastAPI application entry point."""
 
+import logging
+from os import environ
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,6 +10,11 @@ from api.routes.analyse import router as analyse_router
 from api.routes.cost import router as cost_router
 from api.routes.pricing import router as pricing_router
 from api.routes.summarize import router as summarize_router
+
+logging.basicConfig(
+    level=environ.get("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app = FastAPI(title="hows-the-news", version="1.0.0")
 
