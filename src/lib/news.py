@@ -2,8 +2,11 @@
 
 from typing import TypedDict
 
+import httpx
+
 from lib.article import fetch_article
 from lib.config import MAX_TEXT_LENGTH
+from lib.cost import cost_report, no_pricing_report
 from lib.llm import chat
 from lib.prompts import SUMMARIZE_SYSTEM_PROMPT
 
@@ -22,6 +25,8 @@ class SummaryResult(TypedDict):
     prompt_tokens_cost: float
     completion_tokens_cost: float
     cost: float
+    input_price_per_token: float | None
+    output_price_per_token: float | None
     input_price_per_m: float | None
     output_price_per_m: float | None
     source: str
@@ -60,6 +65,8 @@ def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
                 prompt_tokens_cost=0.0,
                 completion_tokens_cost=0.0,
                 cost=0.0,
+                input_price_per_token=None,
+                output_price_per_token=None,
                 input_price_per_m=None,
                 output_price_per_m=None,
                 source="",
@@ -77,6 +84,8 @@ def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
                 prompt_tokens_cost=0.0,
                 completion_tokens_cost=0.0,
                 cost=0.0,
+                input_price_per_token=None,
+                output_price_per_token=None,
                 input_price_per_m=None,
                 output_price_per_m=None,
                 source="",
@@ -85,6 +94,10 @@ def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
     if text is None:
         raise ValueError("Provide exactly one of 'text' or 'url'")
     result = chat(SUMMARIZE_SYSTEM_PROMPT, text)
+    try:
+        cost = cost_report(result.model, result.platform, result.usage)
+    except httpx.HTTPError:
+        cost = no_pricing_report(result.model, result.platform, result.usage)
 
     return SummaryResult(
         is_news=bool(result.data.get("is_news")),
@@ -95,10 +108,12 @@ def summarize(text: str | None = None, url: str | None = None) -> SummaryResult:
         prompt_tokens=result.usage.prompt_tokens,
         completion_tokens=result.usage.completion_tokens,
         total_tokens=result.usage.total_tokens,
-        prompt_tokens_cost=result.usage.prompt_tokens_cost(),
-        completion_tokens_cost=result.usage.completion_tokens_cost(),
-        cost=result.usage.cost(),
-        input_price_per_m=None,
-        output_price_per_m=None,
-        source="",
+        prompt_tokens_cost=cost["prompt_tokens_cost"],
+        completion_tokens_cost=cost["completion_tokens_cost"],
+        cost=cost["cost"],
+        input_price_per_token=cost["input_price_per_token"],
+        output_price_per_token=cost["output_price_per_token"],
+        input_price_per_m=cost["input_price_per_m"],
+        output_price_per_m=cost["output_price_per_m"],
+        source=cost["source"],
     )

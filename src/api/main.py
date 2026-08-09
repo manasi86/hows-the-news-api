@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes.analyse import router as analyse_router
+from api.routes.cost import router as cost_router
 from api.routes.pricing import router as pricing_router
 from api.routes.summarize import router as summarize_router
 
@@ -19,6 +20,7 @@ app.add_middleware(
 app.include_router(summarize_router)
 app.include_router(analyse_router)
 app.include_router(pricing_router)
+app.include_router(cost_router)
 
 
 @app.get("/health")

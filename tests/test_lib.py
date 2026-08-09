@@ -186,9 +186,9 @@ def test_chat_missing_usage(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_token_usage_cost() -> None:
     usage = TokenUsage(prompt_tokens=1_000_000, completion_tokens=1_000_000)
     assert usage.total_tokens == 2_000_000
-    assert usage.prompt_tokens_cost() == 0.039
-    assert usage.completion_tokens_cost() == 0.100
-    assert usage.cost() == 0.139
+    assert usage.prompt_tokens_cost_at(0.039) == 0.039
+    assert usage.completion_tokens_cost_at(0.100) == 0.100
+    assert usage.cost_at(0.039, 0.100) == 0.139
 
 
 def test_token_usage_cost_at() -> None:
@@ -203,7 +203,9 @@ def test_token_usage_cost_at() -> None:
 
 def test_token_usage_cost_split_consistency() -> None:
     usage = TokenUsage(prompt_tokens=368, completion_tokens=84)
-    assert usage.cost() == usage.prompt_tokens_cost() + usage.completion_tokens_cost()
+    assert usage.cost_at(0.039, 0.100) == usage.prompt_tokens_cost_at(
+        0.039
+    ) + usage.completion_tokens_cost_at(0.100)
 
 
 def test_chat_http_status_error(monkeypatch: pytest.MonkeyPatch) -> None:

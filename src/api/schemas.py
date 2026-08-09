@@ -42,6 +42,8 @@ class SummarizeResponse(BaseModel):
     prompt_tokens_cost: float = 0.0
     completion_tokens_cost: float = 0.0
     cost: float = 0.0
+    input_price_per_token: float | None = None
+    output_price_per_token: float | None = None
     input_price_per_m: float | None = None
     output_price_per_m: float | None = None
     source: str = ""
@@ -61,6 +63,8 @@ class AnalyseResponse(BaseModel):
     prompt_tokens_cost: float = 0.0
     completion_tokens_cost: float = 0.0
     cost: float = 0.0
+    input_price_per_token: float | None = None
+    output_price_per_token: float | None = None
     input_price_per_m: float | None = None
     output_price_per_m: float | None = None
     source: str = ""
@@ -86,3 +90,32 @@ class PricingListResponse(BaseModel):
 
     model: str
     providers: list[PricingResponse]
+
+
+class CostRequest(BaseModel):
+    """Request body for the ``/cost`` endpoint."""
+
+    model: str = Field(min_length=1)
+    prompt_tokens: int = Field(ge=0)
+    completion_tokens: int = Field(ge=0)
+    platform: str | None = None
+
+
+class CostResponse(BaseModel):
+    """Response from the ``/cost`` endpoint."""
+
+    model: str
+    platform: str | None = None
+    found: bool = False
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    input_price_per_token: float | None = None
+    output_price_per_token: float | None = None
+    input_price_per_m: float | None = None
+    output_price_per_m: float | None = None
+    prompt_tokens_cost: float = 0.0
+    completion_tokens_cost: float = 0.0
+    cost: float = 0.0
+    currency: Literal["USD"] = "USD"
+    source: str = ""

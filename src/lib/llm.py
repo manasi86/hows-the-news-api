@@ -6,12 +6,7 @@ from typing import Any, TypeAlias, cast
 
 import httpx
 
-from lib.config import (
-    LLM_INPUT_PRICE_PER_MTOKEN,
-    LLM_OUTPUT_PRICE_PER_MTOKEN,
-    Settings,
-    get_settings,
-)
+from lib.config import Settings, get_settings
 
 JsonObject: TypeAlias = dict[str, Any]
 
@@ -31,23 +26,6 @@ class TokenUsage:
     def total_tokens(self) -> int:
         """Return the total number of tokens consumed."""
         return self.prompt_tokens + self.completion_tokens
-
-    def prompt_tokens_cost(self) -> float:
-        """Return the cost in USD of the prompt tokens."""
-        return self.prompt_tokens_cost_at(LLM_INPUT_PRICE_PER_MTOKEN)
-
-    def completion_tokens_cost(self) -> float:
-        """Return the cost in USD of the completion tokens."""
-        return self.completion_tokens_cost_at(LLM_OUTPUT_PRICE_PER_MTOKEN)
-
-    def cost(self) -> float:
-        """Return the total cost in USD of the consumed tokens.
-
-        Cost is the sum of the prompt and completion token costs, each computed
-        using the configured per-million-token prices. The total is rounded so
-        it always equals ``prompt_tokens_cost() + completion_tokens_cost()``.
-        """
-        return round(self.prompt_tokens_cost() + self.completion_tokens_cost(), 6)
 
     def prompt_tokens_cost_at(self, prompt_price_per_m: float) -> float:
         """Return the cost in USD of the prompt tokens at ``prompt_price_per_m``.
