@@ -67,6 +67,8 @@ def _ok_response(
     return {
         "choices": [{"message": {"content": content}}],
         "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
+        "model": "openai/gpt-oss-120b",
+        "_routed_via": {"platform": "groq", "model": "openai/gpt-oss-120b"},
     }
 
 
@@ -149,6 +151,22 @@ def test_chat_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.data == {"is_news": True, "summary": "s", "reason": "r"}
     assert result.usage == TokenUsage(prompt_tokens=100, completion_tokens=50)
     assert result.usage.total_tokens == 150
+    assert result.model == "openai/gpt-oss-120b"
+    assert result.platform == "groq"
+
+
+def test_chat_missing_routing_info(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_env(monkeypatch)
+    content = '{"is_news": true}'
+    monkeypatch.setattr(
+        "lib.llm.httpx.post",
+        lambda *args, **kwargs: _fake_post(
+            json_data={"choices": [{"message": {"content": content}}], "model": "deepseek-v4-pro"}
+        ),
+    )
+    result = chat("system", "user text")
+    assert result.model == "deepseek-v4-pro"
+    assert result.platform is None
 
 
 def test_chat_missing_usage(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -171,6 +189,16 @@ def test_token_usage_cost() -> None:
     assert usage.prompt_tokens_cost() == 0.039
     assert usage.completion_tokens_cost() == 0.100
     assert usage.cost() == 0.139
+
+
+def test_token_usage_cost_at() -> None:
+    usage = TokenUsage(prompt_tokens=1_000_000, completion_tokens=1_000_000)
+    assert usage.prompt_tokens_cost_at(0.5) == 0.5
+    assert usage.completion_tokens_cost_at(0.25) == 0.25
+    assert usage.cost_at(0.5, 0.25) == 0.75
+    assert usage.cost_at(0.5, 0.25) == usage.prompt_tokens_cost_at(
+        0.5
+    ) + usage.completion_tokens_cost_at(0.25)
 
 
 def test_token_usage_cost_split_consistency() -> None:

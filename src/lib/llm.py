@@ -34,11 +34,11 @@ class TokenUsage:
 
     def prompt_tokens_cost(self) -> float:
         """Return the cost in USD of the prompt tokens."""
-        return round(self.prompt_tokens / 1_000_000 * LLM_INPUT_PRICE_PER_MTOKEN, 6)
+        return self.prompt_tokens_cost_at(LLM_INPUT_PRICE_PER_MTOKEN)
 
     def completion_tokens_cost(self) -> float:
         """Return the cost in USD of the completion tokens."""
-        return round(self.completion_tokens / 1_000_000 * LLM_OUTPUT_PRICE_PER_MTOKEN, 6)
+        return self.completion_tokens_cost_at(LLM_OUTPUT_PRICE_PER_MTOKEN)
 
     def cost(self) -> float:
         """Return the total cost in USD of the consumed tokens.
@@ -49,13 +49,53 @@ class TokenUsage:
         """
         return round(self.prompt_tokens_cost() + self.completion_tokens_cost(), 6)
 
+    def prompt_tokens_cost_at(self, prompt_price_per_m: float) -> float:
+        """Return the cost in USD of the prompt tokens at ``prompt_price_per_m``.
+
+        Args:
+            prompt_price_per_m: The price in USD per million prompt tokens.
+
+        Returns:
+            The cost in USD, rounded to six decimal places.
+        """
+        return round(self.prompt_tokens / 1_000_000 * prompt_price_per_m, 6)
+
+    def completion_tokens_cost_at(self, completion_price_per_m: float) -> float:
+        """Return the cost in USD of the completion tokens at ``completion_price_per_m``.
+
+        Args:
+            completion_price_per_m: The price in USD per million completion tokens.
+
+        Returns:
+            The cost in USD, rounded to six decimal places.
+        """
+        return round(self.completion_tokens / 1_000_000 * completion_price_per_m, 6)
+
+    def cost_at(self, prompt_price_per_m: float, completion_price_per_m: float) -> float:
+        """Return the total cost in USD at the given per-million-token prices.
+
+        Args:
+            prompt_price_per_m: The price in USD per million prompt tokens.
+            completion_price_per_m: The price in USD per million completion tokens.
+
+        Returns:
+            The total cost in USD, rounded to six decimal places.
+        """
+        return round(
+            self.prompt_tokens_cost_at(prompt_price_per_m)
+            + self.completion_tokens_cost_at(completion_price_per_m),
+            6,
+        )
+
 
 @dataclass(frozen=True)
 class ChatResult:
-    """Parsed JSON response from the LLM along with the token usage."""
+    """Parsed JSON response from the LLM along with the token usage and routing."""
 
     data: JsonObject
     usage: TokenUsage
+    model: str
+    platform: str | None = None
 
 
 def _extract_json(response_text: str) -> str:
@@ -132,7 +172,15 @@ def _chat(settings: Settings, system_prompt: str, user_text: str) -> ChatResult:
         prompt_tokens=int(usage_data.get("prompt_tokens", 0)),
         completion_tokens=int(usage_data.get("completion_tokens", 0)),
     )
-    return ChatResult(data=_parse_json(content), usage=usage)
+    routed_via = data.get("_routed_via") or {}
+    model = str(data.get("model", ""))
+    platform = routed_via.get("platform") if isinstance(routed_via, dict) else None
+    return ChatResult(
+        data=_parse_json(content),
+        usage=usage,
+        model=model,
+        platform=str(platform) if platform else None,
+    )
 
 
 def chat(system_prompt: str, user_text: str) -> ChatResult:

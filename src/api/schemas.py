@@ -1,6 +1,8 @@
 """Pydantic request and response models for the API."""
 
-from pydantic import BaseModel, Field, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lib.config import MAX_TEXT_LENGTH
 from lib.sentiment import Sentiment
@@ -32,12 +34,17 @@ class SummarizeResponse(BaseModel):
     is_news: bool
     summary: str | None = None
     reason: str = ""
+    model: str = ""
+    platform: str | None = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
     prompt_tokens_cost: float = 0.0
     completion_tokens_cost: float = 0.0
     cost: float = 0.0
+    input_price_per_m: float | None = None
+    output_price_per_m: float | None = None
+    source: str = ""
 
 
 class AnalyseResponse(BaseModel):
@@ -46,9 +53,37 @@ class AnalyseResponse(BaseModel):
     sentiment: Sentiment
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = ""
+    model: str = ""
+    platform: str | None = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
     prompt_tokens_cost: float = 0.0
     completion_tokens_cost: float = 0.0
     cost: float = 0.0
+    input_price_per_m: float | None = None
+    output_price_per_m: float | None = None
+    source: str = ""
+
+
+class PricingResponse(BaseModel):
+    """Response from the ``/pricing`` endpoint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str
+    model_name: str | None = None
+    provider: str | None = None
+    input_price_per_million: float | None = None
+    output_price_per_million: float | None = None
+    currency: Literal["USD"] = "USD"
+    context_window: int | None = None
+    prices_checked: str | None = None
+    source: Literal["pydantic/genai-prices"] = "pydantic/genai-prices"
+
+
+class PricingListResponse(BaseModel):
+    """Response from the ``/pricing`` endpoint when no provider is given."""
+
+    model: str
+    providers: list[PricingResponse]

@@ -14,6 +14,9 @@ LLM_TIMEOUT_DEFAULT = 30.0
 LLM_INPUT_PRICE_PER_MTOKEN = 0.039
 LLM_OUTPUT_PRICE_PER_MTOKEN = 0.100
 
+LLM_STATS_BASE_URL_DEFAULT = "https://api.llm-stats.com/stats"
+LLM_STATS_TIMEOUT_DEFAULT = 30.0
+
 MAX_TEXT_LENGTH = 10_000
 
 
@@ -29,6 +32,9 @@ class Settings:
     llm_base_url: str = LLM_BASE_URL_DEFAULT
     llm_model: str = LLM_MODEL_DEFAULT
     llm_timeout: float = LLM_TIMEOUT_DEFAULT
+    llm_stats_api_key: str = ""
+    llm_stats_base_url: str = LLM_STATS_BASE_URL_DEFAULT
+    llm_stats_timeout: float = LLM_STATS_TIMEOUT_DEFAULT
 
 
 def get_settings() -> Settings:
@@ -51,4 +57,9 @@ def get_settings() -> Settings:
         llm_base_url=base_url,
         llm_model=model,
         llm_timeout=timeout,
+        llm_stats_api_key=environ.get("LLM_STATS_API_KEY", ""),
+        llm_stats_base_url=environ.get("LLM_STATS_BASE_URL", LLM_STATS_BASE_URL_DEFAULT).rstrip(
+            "/"
+        ),
+        llm_stats_timeout=float(environ.get("LLM_STATS_TIMEOUT", LLM_STATS_TIMEOUT_DEFAULT)),
     )

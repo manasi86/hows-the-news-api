@@ -476,6 +476,7 @@ name = "hows-the-news"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "beautifulsoup4" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "python-dotenv" },
@@ -510,6 +511,7 @@ type-check = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beautifulsoup4" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "python-dotenv" },
