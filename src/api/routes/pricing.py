@@ -7,7 +7,6 @@ import httpx
 from api.schemas import PricingListResponse, PricingResponse
 from lib.pricing import find_model_pricing
 
-
 router = APIRouter()
 
 
@@ -18,7 +17,9 @@ def get_pricing(model: str, provider: str | None = None) -> PricingResponse | Pr
         prices = find_model_pricing(model, provider)
 
     except httpx.HTTPError as error:
-        raise HTTPException(status_code=503, detail=f"Unable to fetch pricing data: {error}") from error
+        raise HTTPException(
+            status_code=503, detail=f"Unable to fetch pricing data: {error}"
+        ) from error
 
     if not prices:
         raise HTTPException(

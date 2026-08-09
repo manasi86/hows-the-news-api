@@ -5,7 +5,6 @@ import pytest
 
 from lib.llm import ChatResult, JsonObject, TokenUsage
 from lib.news import summarize
-
 from lib.sentiment import analyze_sentiment
 
 

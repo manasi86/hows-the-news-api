@@ -5,7 +5,6 @@ from typing import TypedDict
 from lib.article import fetch_article
 from lib.config import MAX_TEXT_LENGTH
 from lib.llm import chat
-
 from lib.prompts import SUMMARIZE_SYSTEM_PROMPT
 
 

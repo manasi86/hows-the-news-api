@@ -3,7 +3,6 @@
 from typing import Literal, TypedDict, cast
 
 from lib.llm import chat
-
 from lib.prompts import SENTIMENT_SYSTEM_PROMPT
 
 Sentiment = Literal["positive", "negative", "neutral"]

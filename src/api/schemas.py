@@ -74,12 +74,11 @@ class PricingResponse(BaseModel):
     model: str
     model_name: str | None = None
     provider: str | None = None
-    input_price_per_million: float | None = None
-    output_price_per_million: float | None = None
+    input_price_per_token: float | None = None
+    output_price_per_token: float | None = None
     currency: Literal["USD"] = "USD"
     context_window: int | None = None
-    prices_checked: str | None = None
-    source: Literal["pydantic/genai-prices"] = "pydantic/genai-prices"
+    source: Literal["openrouter"] = "openrouter"
 
 
 class PricingListResponse(BaseModel):

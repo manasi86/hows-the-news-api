@@ -1,29 +1,29 @@
-"""Model pricing lookups via the LLM Stats API with a web-search fallback."""
+"""Model pricing lookups via the OpenRouter models API."""
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
+
 import httpx
 
-PRICING_URL = "https://raw.githubusercontent.com/pydantic/genai-prices/main/prices/data_slim.json"
+OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
 
 class PricingResult(TypedDict):
-    """Pricing details for a single model on a single provider."""
+    """Pricing details for a single model served by OpenRouter."""
 
     model: str
     model_name: str | None
     provider: str
-    input_price_per_million: float | None
-    output_price_per_million: float | None
+    input_price_per_token: float | None
+    output_price_per_token: float | None
     currency: str
     context_window: int | None
-    prices_checked: str | None
     source: str
 
 
 def load_pricing_data() -> Any:
-    response = httpx.get(PRICING_URL, timeout=10)
+    response = httpx.get(OPENROUTER_MODELS_URL, timeout=10)
     response.raise_for_status()
 
     return response.json()
@@ -31,6 +31,13 @@ def load_pricing_data() -> Any:
 
 def normalise(value: str) -> str:
     return value.lower().strip().replace("_", "-")
+
+
+def _to_float(value: object) -> float | None:
+    try:
+        return float(cast("Any", value)) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
 
 
 def find_model_pricing(model_name: str, provider_name: str | None = None) -> list[PricingResult]:
@@ -42,75 +49,49 @@ def find_model_pricing(model_name: str, provider_name: str | None = None) -> lis
 
     results: list[PricingResult] = []
 
-    # genai-prices contains provider definitions
-    for provider in data:
-        provider_id = normalise(provider.get("id", ""))
+    # OpenRouter model ids are ``provider/model``, optionally with a leading
+    # ``~`` featured marker or a trailing ``:variant`` suffix.
+    for model in data.get("data", []):
+        model_id = normalise(model.get("id", "")).lstrip("~")
 
-        provider_display_name = normalise(provider.get("name", ""))
+        provider = model_id.split("/", 1)[0]
 
         # Provider filter
-        if requested_provider:
-            provider_exact_match = requested_provider in (provider_id, provider_display_name)
+        if requested_provider and requested_provider not in provider:
+            continue
 
-            provider_fuzzy_match = (
-                requested_provider in provider_id or requested_provider in provider_display_name
-            )
+        model_part = model_id.split("/", 1)[1] if "/" in model_id else model_id
+        model_part_no_variant = model_part.split(":", 1)[0]
 
-            if not provider_exact_match and not provider_fuzzy_match:
-                continue
+        model_display_name = normalise(model.get("name", ""))
 
-        models = provider.get("models", [])
+        direct_match = requested_model == model_id
 
-        for model in models:
-            model_id = normalise(model.get("id", ""))
+        name_match = requested_model == model_display_name
 
-            model_display_name = normalise(model.get("name", ""))
+        bare_match = requested_model in (model_part, model_part_no_variant)
 
-            # Check direct model match
-            direct_match = requested_model in (model_id, model_display_name)
+        if not direct_match and not name_match and not bare_match:
+            continue
 
-            # Check aliases
-            alias_match = False
+        pricing = model.get("pricing", {})
 
-            match_config = model.get("match", {})
-
-            match_rules = match_config.get("or", [])
-
-            for rule in match_rules:
-                equals = rule.get("equals")
-
-                if equals and normalise(equals) == requested_model:
-                    alias_match = True
-                    break
-
-            if not direct_match and not alias_match:
-                continue
-
-            prices = model.get("prices", {})
-
-            input_price = prices.get("input_mtok")
-
-            output_price = prices.get("output_mtok")
-
-            results.append(
-                {
-                    "model": model.get("id", model_name),
-                    "model_name": model.get("name"),
-                    "provider": provider.get("id", provider.get("name")),
-                    "input_price_per_million": input_price,
-                    "output_price_per_million": output_price,
-                    "currency": "USD",
-                    "context_window": model.get("context_window"),
-                    "prices_checked": model.get("prices_checked"),
-                    "source": "pydantic/genai-prices",
-                }
-            )
+        results.append(
+            {
+                "model": model_id,
+                "model_name": model.get("name"),
+                "provider": provider,
+                "input_price_per_token": _to_float(pricing.get("prompt")),
+                "output_price_per_token": _to_float(pricing.get("completion")),
+                "currency": "USD",
+                "context_window": model.get("context_length"),
+                "source": "openrouter",
+            }
+        )
 
     # Prefer exact provider matches over substring matches
     if requested_provider:
-        exact_matches = [
-            result for result in results if requested_provider == normalise(result["provider"])
-        ]
+        exact_matches = [result for result in results if requested_provider == result["provider"]]
 
         if exact_matches:
             results = exact_matches
